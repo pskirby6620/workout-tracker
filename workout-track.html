@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workout Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
+    
+    <script type="text/babel" data-type="module">
+        const { useState } = React;
+        
+        const WorkoutTracker = () => {
+          const [workoutType, setWorkoutType] = useState('');
+          const [duration, setDuration] = useState('');
+          const [feeling, setFeeling] = useState('');
+          const [selectedExercises, setSelectedExercises] = useState([]);
+          const [cardioData, setCardioData] = useState({
+            type: '',
+            duration: '',
+            distance: '',
+            intensity: ''
+          });
+          const [yogaData, setYogaData] = useState({
+            type: '',
+            duration: ''
+          });
+          const [notes, setNotes] = useState('');
+          const [submitted, setSubmitted] = useState(false);
+          const [isSubmitting, setIsSubmitting] = useState(false);
+
+          const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwB_JvBScLYlqI9p0MoCOkTA4FZLTWTywy_PLRfHcmYqolfcNM7eCbSbD1ABkpIRfwkzw/exec';
+
+          const exercises = {
+            chest: ['Barbell Bench Press', 'Dumbbell Bench Press', 'Incline Bench Press', 'Chest Press Machine', 'Push-ups', 'Cable Flyes', 'Dips (Chest focus)'],
+            back: ['Deadlifts', 'Barbell Rows', 'Cable Rows', 'Lat Pulldown', 'Pull-ups', 'Chin-ups', 'TRX Rows', 'Dumbbell Rows'],
+            legs: ['Barbell Squats', 'Leg Press', 'Lunges', 'Romanian Deadlifts', 'Leg Curls', 'Leg Extensions', 'Calf Raises', 'Bulgarian Split Squats'],
+            shoulders: ['Overhead Press (Barbell)', 'Overhead Press (Dumbbell)', 'Lateral Raises', 'Front Raises', 'Rear Delt Flyes', 'Face Pulls', 'Shrugs'],
+            arms: ['Bicep Curls (Barbell)', 'Bicep Curls (Dumbbell)', 'Hammer Curls', 'Tricep Extensions', 'Tricep Dips', 'Cable Tricep Pushdowns', 'Skull Crushers'],
+            core: ['Planks', 'Russian Twists', 'Hanging Leg Raises', 'Ab Wheel', 'Cable Crunches', 'Side Planks', 'Dead Bugs']
+          };
+
+          const addExercise = (exerciseName, bodyPart) => {
+            const newExercise = {
+              id: Date.now(),
+              name: exerciseName,
+              bodyPart: bodyPart,
+              weight: '',
+              sets: '',
+              reps: ''
+            };
+            setSelectedExercises([...selectedExercises, newExercise]);
+          };
+
+          const removeExercise = (id) => {
+            setSelectedExercises(selectedExercises.filter(ex => ex.id !== id));
+          };
+
+          const updateExercise = (id, field, value) => {
+            setSelectedExercises(selectedExercises.map(ex => 
+              ex.id === id ? { ...ex, [field]: value } : ex
+            ));
+          };
+
+          const handleSubmit = () => {
+            setIsSubmitting(true);
+
+            const workoutData = {
+              timestamp: new Date().toISOString(),
+              workoutType,
+              duration,
+              feeling,
+              exercises: selectedExercises,
+              cardio: workoutType === 'cardio' ? cardioData : null,
+              yoga: workoutType === 'yoga' ? yogaData : null,
+              notes
+            };
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = GOOGLE_SCRIPT_URL;
+            form.target = 'hidden_iframe';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'data';
+            input.value = JSON.stringify(workoutData);
+            form.appendChild(input);
+            
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+
+            setTimeout(() => {
+              setSubmitted(true);
+              setTimeout(() => resetForm(), 2000);
+            }, 500);
+          };
+
+          const resetForm = () => {
+            setWorkoutType('');
+            setDuration('');
+            setFeeling('');
+            setSelectedExercises([]);
+            setCardioData({ type: '', duration: '', distance: '', intensity: '' });
+            setYogaData({ type: '', duration: '' });
+            setNotes('');
+            setSubmitted(false);
+            setIsSubmitting(false);
+          };
+
+          if (submitted) {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+                  <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">Workout Logged!</h2>
+                  <p className="text-gray-600">Great job! Check your Google Sheet! 💪</p>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+              <div className="max-w-2xl mx-auto">
+                <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                  <h1 className="text-3xl font-bold text-gray-800 mb-2">💪 Workout Tracker</h1>
+                  <p className="text-gray-600">Track your progress, one rep at a time</p>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-4">Workout Details</h2>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Workout Type *</label>
+                    <select value={workoutType} onChange={(e) => setWorkoutType(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none">
+                      <option value="">Select type...</option>
+                      <option value="strength">Strength Training</option>
+                      <option value="cardio">Cardio</option>
+                      <option value="yoga">Yoga/Stretching</option>
+                    </select>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Duration (minutes) *</label>
+                    <input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="30" className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none" />
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">How did you feel? *</label>
+                    <select value={feeling} onChange={(e) => setFeeling(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none">
+                      <option value="">Select...</option>
+                      <option value="excellent">Excellent - Crushed it! 💪</option>
+                      <option value="good">Good - Solid workout</option>
+                      <option value="okay">Okay - Got through it</option>
+                      <option value="tough">Tough - Struggled today</option>
+                      <option value="poor">Poor - Off day</option>
+                    </select>
+                  </div>
+                </div>
+
+                {workoutType === 'strength' && (
+                  <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">Select Exercises</h2>
+                    {Object.entries(exercises).map(([bodyPart, exerciseList]) => (
+                      <div key={bodyPart} className="mb-6">
+                        <h3 className="text-lg font-semibold text-indigo-600 uppercase mb-3">{bodyPart}</h3>
+                        <div className="grid grid-cols-1 gap-2">
+                          {exerciseList.map((exercise) => (
+                            <button key={exercise} onClick={() => addExercise(exercise, bodyPart)} className="text-left p-3 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-colors">
+                              {exercise}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+
+                    {selectedExercises.length > 0 && (
+                      <div className="mt-6 border-t-2 pt-6">
+                        <h3 className="text-lg font-bold text-gray-800 mb-4">Your Exercises ({selectedExercises.length})</h3>
+                        {selectedExercises.map((exercise) => (
+                          <div key={exercise.id} className="bg-gray-50 p-4 rounded-lg mb-3">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-semibold text-gray-800">{exercise.name}</h4>
+                              <button onClick={() => removeExercise(exercise.id)} className="text-red-500 hover:text-red-700">✕</button>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Weight (lbs)</label>
+                                <input type="number" value={exercise.weight} onChange={(e) => updateExercise(exercise.id, 'weight', e.target.value)} placeholder="185" className="w-full p-2 border-2 border-gray-200 rounded focus:border-indigo-500 focus:outline-none" />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Sets</label>
+                                <input type="number" value={exercise.sets} onChange={(e) => updateExercise(exercise.id, 'sets', e.target.value)} placeholder="4" className="w-full p-2 border-2 border-gray-200 rounded focus:border-indigo-500 focus:outline-none" />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Reps</label>
+                                <input type="number" value={exercise.reps} onChange={(e) => updateExercise(exercise.id, 'reps', e.target.value)} placeholder="8" className="w-full p-2 border-2 border-gray-200 rounded focus:border-indigo-500 focus:outline-none" />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {workoutType === 'cardio' && (
+                  <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">Cardio Details</h2>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Cardio Type</label>
+                      <select value={cardioData.type} onChange={(e) => setCardioData({...cardioData, type: e.target.value})} className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none">
+                        <option value="">Select...</option>
+                        <option value="treadmill-run">Treadmill Running</option>
+                        <option value="treadmill-walk">Treadmill Walking</option>
+                        <option value="outdoor-run">Outdoor Running</option>
+                        <option value="cycling">Cycling</option>
+                        <option value="rowing">Rowing</option>
+                        <option value="elliptical">Elliptical</option>
+                      </select>
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Distance (miles)</label>
+                      <input type="number" step="0.1" value={cardioData.distance} onChange={(e) => setCardioData({...cardioData, distance: e.target.value})} placeholder="3.5" className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none" />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Intensity</label>
+                      <select value={cardioData.intensity} onChange={(e) => setCardioData({...cardioData, intensity: e.target.value})} className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none">
+                        <option value="">Select...</option>
+                        <option value="light">Light</option>
+                        <option value="moderate">Moderate</option>
+                        <option value="hard">Hard</option>
+                        <option value="very-hard">Very Hard</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {workoutType === 'yoga' && (
+                  <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">Yoga/Stretching Details</h2>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                      <select value={yogaData.type} onChange={(e) => setYogaData({...yogaData, type: e.target.value})} className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none">
+                        <option value="">Select...</option>
+                        <option value="vinyasa">Vinyasa Flow</option>
+                        <option value="hatha">Hatha</option>
+                        <option value="yin">Yin/Restorative</option>
+                        <option value="power">Power Yoga</option>
+                        <option value="static">Static Stretching</option>
+                        <option value="dynamic">Dynamic Stretching</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-4">Notes</h2>
+                  <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="PRs, how you felt, things to remember..." rows="4" className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none" />
+                </div>
+
+                <button onClick={handleSubmit} disabled={!workoutType || !duration || !feeling || isSubmitting} className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-lg shadow-lg">
+                  {isSubmitting ? 'Logging...' : 'Log Workout 💪'}
+                </button>
+              </div>
+            </div>
+          );
+        };
+
+        ReactDOM.render(<WorkoutTracker />, document.getElementById('root'));
+    </script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</body>
+</html>
